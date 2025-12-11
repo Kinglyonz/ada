@@ -1,0 +1,21 @@
+{
+  "name": "bowie-ada-scanner",
+  "version": "1.0.0",
+  "description": "ADA compliance scanner proof-of-concept for City of Bowie",
+  "main": "scanner.js",
+  "scripts": {
+    "scan": "node scanner.js",
+    "start": "node server.js",
+    "install-deps": "npm install"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "cli-table3": "^0.6.3",
+    "express": "^4.22.1",
+    "multer": "^1.4.5-lts.1",
+    "pa11y": "^7.0.0",
+    "puppeteer": "^21.0.0"
+  },
+  "author": "Your Team",
+  "license": "MIT"
+}

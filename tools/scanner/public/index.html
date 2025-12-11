@@ -1,0 +1,1513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ADA Compliance Scanner - Professional Edition</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #3b82f6 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      color: white;
+      margin-bottom: 30px;
+      position: relative;
+    }
+
+    .logo {
+      position: absolute;
+      left: 0;
+      top: -10px;
+      height: 70px;
+      width: auto;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+    }
+
+    .header h1 {
+      font-size: 42px;
+      margin-bottom: 8px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .header p {
+      font-size: 16px;
+      opacity: 0.95;
+      font-weight: 400;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      padding: 6px;
+      border-radius: 16px;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 12px 24px;
+      background: transparent;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      opacity: 0.7;
+    }
+
+    .tab:hover {
+      opacity: 0.9;
+    }
+
+    .tab.active {
+      background: white;
+      color: #1e40af;
+      opacity: 1;
+    }
+
+    .scanner-box {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      padding: 40px;
+      margin-bottom: 24px;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    input[type="url"] {
+      flex: 1;
+      padding: 16px 20px;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      font-size: 15px;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    input[type="url"]:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .upload-area {
+      border: 3px dashed #cbd5e0;
+      border-radius: 16px;
+      padding: 48px 32px;
+      text-align: center;
+      transition: all 0.3s;
+      cursor: pointer;
+      background: #f7fafc;
+      position: relative;
+    }
+
+    .upload-area:hover {
+      border-color: #3b82f6;
+      background: #eff6ff;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+    }
+
+    .upload-area.dragover {
+      border-color: #1e40af;
+      background: #dbeafe;
+      transform: scale(1.02);
+      box-shadow: 0 8px 24px rgba(30, 64, 175, 0.2);
+    }
+
+    .upload-area.dragover::before {
+      content: '\1F4E5 Drop files here';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 24px;
+      font-weight: 700;
+      color: #1e40af;
+      z-index: 10;
+    }
+
+    .upload-area.dragover > * {
+      opacity: 0.3;
+    }
+
+    .upload-area .icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .upload-area h3 {
+      font-size: 18px;
+      margin-bottom: 8px;
+      color: #2d3748;
+    }
+
+    .upload-area p {
+      color: #718096;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .file-list {
+      margin-top: 20px;
+      display: none;
+    }
+
+    .file-list.active {
+      display: block;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: #f7fafc;
+      border-radius: 10px;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .file-item .name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #2d3748;
+    }
+
+    .file-item .size {
+      color: #718096;
+      margin-left: 16px;
+      margin-right: 12px;
+    }
+
+    .file-item button {
+      padding: 6px 12px;
+      background: #fed7d7;
+      color: #c53030;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    button.primary {
+      padding: 16px 40px;
+      background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 15px rgba(30, 64, 175, 0.4);
+    }
+
+    button.primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(30, 64, 175, 0.5);
+      background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+    }
+
+    button.primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .examples {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .examples span {
+      color: #718096;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .example-btn {
+      padding: 8px 16px;
+      background: #edf2f7;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #2d3748;
+      font-weight: 500;
+    }
+
+    .example-btn:hover {
+      background: #e2e8f0;
+      transform: translateY(-1px);
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 60px 40px;
+    }
+
+    .loading.active {
+      display: block;
+    }
+
+    .spinner {
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-top: 4px solid white;
+      border-radius: 50%;
+      width: 56px;
+      height: 56px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 24px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .loading p {
+      color: white;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .results {
+      display: none;
+    }
+
+    .results.active {
+      display: block;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: white;
+      padding: 28px 24px;
+      border-radius: 16px;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+
+    .stat-card .number {
+      font-size: 52px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      line-height: 1;
+    }
+
+    .stat-card .label {
+      font-size: 13px;
+      color: #718096;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+
+    .stat-card.total .number { 
+      background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .stat-card.errors .number { color: #f56565; }
+    .stat-card.warnings .number { color: #ed8936; }
+    .stat-card.notices .number { color: #48bb78; }
+
+    .section {
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .section h2 {
+      font-size: 22px;
+      margin-bottom: 24px;
+      color: #1a202c;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+    }
+
+    .chart-item {
+      background: #f7fafc;
+      padding: 20px;
+      border-radius: 12px;
+      border-left: 4px solid #3b82f6;
+      transition: all 0.2s;
+    }
+
+    .chart-item:hover {
+      transform: translateX(4px);
+      background: #edf2f7;
+    }
+
+    .chart-item .label {
+      font-size: 13px;
+      color: #4a5568;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    .chart-item .value {
+      font-size: 32px;
+      font-weight: 700;
+      color: #1a202c;
+    }
+
+    .chart-item .percentage {
+      font-size: 14px;
+      color: #718096;
+      margin-left: 8px;
+    }
+
+    .issue-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .issue-item {
+      background: #f7fafc;
+      padding: 20px;
+      border-radius: 12px;
+      border-left: 4px solid #cbd5e0;
+      transition: all 0.2s;
+    }
+
+    .issue-item:hover {
+      transform: translateX(4px);
+    }
+
+    .issue-item.error {
+      border-left-color: #f56565;
+      background: #fff5f5;
+    }
+
+    .issue-item.warning {
+      border-left-color: #ed8936;
+      background: #fffaf0;
+    }
+
+    .issue-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .issue-badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .issue-badge.error {
+      background: #f56565;
+      color: white;
+    }
+
+    .issue-badge.warning {
+      background: #ed8936;
+      color: white;
+    }
+
+    .issue-count {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a202c;
+    }
+
+    .issue-code {
+      font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+      font-size: 12px;
+      color: #718096;
+      margin-bottom: 8px;
+    }
+
+    .issue-message {
+      font-size: 14px;
+      color: #2d3748;
+      line-height: 1.6;
+    }
+
+    .issue-details {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #e2e8f0;
+      display: none;
+    }
+
+    .issue-details.expanded {
+      display: block;
+    }
+
+    .occurrence {
+      background: white;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .occurrence-header {
+      font-size: 12px;
+      font-weight: 600;
+      color: #4a5568;
+      margin-bottom: 8px;
+    }
+
+    .plain-language {
+      background: #eff6ff;
+      padding: 12px 16px;
+      border-radius: 8px;
+      border-left: 4px solid #3b82f6;
+      margin-bottom: 12px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .plain-language strong {
+      color: #1e40af;
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+
+    .plain-language .what {
+      margin-bottom: 8px;
+      color: #2d3748;
+    }
+
+    .plain-language .why {
+      color: #4a5568;
+      font-size: 13px;
+      font-style: italic;
+    }
+
+    .technical-toggle {
+      background: #edf2f7;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      color: #4a5568;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+
+    .technical-toggle:hover {
+      background: #e2e8f0;
+    }
+
+    .technical-details {
+      display: none;
+      margin-top: 12px;
+    }
+
+    .technical-details.visible {
+      display: block;
+    }
+
+    .selector-box {
+      background: #f7fafc;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-family: 'Monaco', 'Consolas', monospace;
+      font-size: 12px;
+      color: #1e40af;
+      margin-bottom: 8px;
+      word-break: break-all;
+    }
+
+    .context-box {
+      background: #fffaf0;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-family: 'Monaco', 'Consolas', monospace;
+      font-size: 11px;
+      color: #744210;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .toggle-details {
+      background: none;
+      border: none;
+      color: #1e40af;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 0;
+      margin-top: 8px;
+    }
+
+    .toggle-details:hover {
+      color: #3b82f6;
+    }
+
+    .help-link {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 6px 12px;
+      background: #667eea;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .help-link:hover {
+      background: #764ba2;
+    }
+
+    .impact-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+
+    .impact-critical { background: #fed7d7; color: #c53030; }
+    .impact-serious { background: #feebc8; color: #c05621; }
+    .impact-moderate { background: #fefcbf; color: #744210; }
+    .impact-minor { background: #c6f6d5; color: #22543d; }
+
+    .filters {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .filter-group label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #4a5568;
+    }
+
+    .filter-select {
+      padding: 8px 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 13px;
+      background: white;
+      cursor: pointer;
+    }
+
+    .export-btn {
+      padding: 8px 16px;
+      background: #059669;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-left: auto;
+      transition: all 0.2s;
+    }
+
+    .export-btn:hover {
+      background: #047857;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
+    }
+
+    .page-info {
+      background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+      padding: 20px 24px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .page-info-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .page-info-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .page-info-row strong {
+      color: #2d3748;
+      margin-right: 8px;
+      min-width: 80px;
+      font-weight: 600;
+    }
+
+    .page-info-row a {
+      color: #1e40af;
+      text-decoration: none;
+      word-break: break-all;
+      font-weight: 500;
+    }
+
+    .page-info-row a:hover {
+      text-decoration: underline;
+    }
+
+    .alert {
+      padding: 20px 24px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      display: none;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .alert.active {
+      display: block;
+    }
+
+    .alert.error {
+      background: #fff5f5;
+      border: 2px solid #feb2b2;
+      color: #c53030;
+    }
+
+    .alert.success {
+      background: #f0fff4;
+      border: 2px solid #9ae6b4;
+      color: #22543d;
+    }
+
+    .pdf-results {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .pdf-card {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .pdf-card h3 {
+      font-size: 16px;
+      margin-bottom: 12px;
+      color: #1a202c;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pdf-card .status {
+      margin-left: auto;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .pdf-card .status.success {
+      background: #c6f6d5;
+      color: #22543d;
+    }
+
+    .pdf-card .status.warning {
+      background: #feebc8;
+      color: #7c2d12;
+    }
+
+    .pdf-card .status.error {
+      background: #fed7d7;
+      color: #742a2a;
+    }
+
+    .pdf-issues {
+      margin-top: 16px;
+    }
+
+    .pdf-issue {
+      padding: 12px;
+      background: #f7fafc;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .pdf-issue.error {
+      background: #fff5f5;
+      color: #c53030;
+    }
+
+    .pdf-issue.warning {
+      background: #fffaf0;
+      color: #7c2d12;
+    }
+
+    @media (max-width: 768px) {
+      .header h1 {
+        font-size: 32px;
+      }
+
+      .scanner-box {
+        padding: 24px;
+      }
+
+      .summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .stat-card .number {
+        font-size: 40px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="rusgroup-logo.svg" alt="rusGroup" class="logo">
+      <h1>🔍 ADA Compliance Scanner</h1>
+      <p>Professional accessibility auditing for websites and documents</p>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('website')">Website Scan</button>
+      <button class="tab" onclick="switchTab('pdf')">PDF Documents</button>
+    </div>
+
+    <div class="scanner-box">
+      <!-- Website Tab -->
+      <div id="websiteTab" class="tab-content active">
+        <div class="input-group">
+          <input 
+            type="url" 
+            id="urlInput" 
+            placeholder="Enter website URL (e.g., https://example.com)"
+            value="https://www.cityofbowie.org"
+          >
+          <button class="primary" id="scanBtn" onclick="scanWebsite()">
+            Scan Website
+          </button>
+        </div>
+
+        <div class="examples">
+          <span>Quick Start:</span>
+          <button class="example-btn" onclick="setUrl('https://www.cityofbowie.org')">City of Bowie</button>
+          <button class="example-btn" onclick="setUrl('https://www.maryland.gov')">Maryland.gov</button>
+          <button class="example-btn" onclick="setUrl('https://www.section508.gov')">Section508.gov</button>
+        </div>
+      </div>
+
+      <!-- PDF Tab -->
+      <div id="pdfTab" class="tab-content">
+        <div class="upload-area" id="uploadArea" onclick="document.getElementById('pdfInput').click()">
+          <div class="icon">📄</div>
+          <h3>Upload PDF Documents</h3>
+          <p>Drag and drop PDF files here, or click to browse</p>
+          <p style="font-size: 12px; color: #a0aec0;">Up to 10 files, max 50MB each</p>
+        </div>
+        <input 
+          type="file" 
+          id="pdfInput" 
+          accept=".pdf" 
+          multiple 
+          onchange="handleFiles(this.files)"
+        >
+
+        <div class="file-list" id="fileList"></div>
+
+        <div style="text-align: center; margin-top: 24px;">
+          <button class="primary" id="scanPdfBtn" onclick="scanPDFs()" style="display: none;">
+            Scan PDF Documents
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <p id="loadingText">Scanning... This may take 30-60 seconds</p>
+    </div>
+
+    <div class="alert" id="alertMessage"></div>
+
+    <div class="results" id="results">
+      <div class="page-info" id="pageInfo"></div>
+
+      <div class="summary-grid">
+        <div class="stat-card total">
+          <div class="number" id="totalIssues">0</div>
+          <div class="label">Total Issues</div>
+        </div>
+        <div class="stat-card errors">
+          <div class="number" id="totalErrors">0</div>
+          <div class="label">Errors</div>
+        </div>
+        <div class="stat-card warnings">
+          <div class="number" id="totalWarnings">0</div>
+          <div class="label">Warnings</div>
+        </div>
+        <div class="stat-card notices">
+          <div class="number" id="totalNotices">0</div>
+          <div class="label">Notices</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>📊 Issue Breakdown by WCAG Principle</h2>
+        <div class="chart-grid" id="categoryChart"></div>
+      </div>
+
+      <div class="section">
+        <h2>🔍 All Issues Found (with locations)</h2>
+        <div class="filters">
+          <div class="filter-group">
+            <label>Filter by Type:</label>
+            <select class="filter-select" id="filterType" onchange="applyFilters()">
+              <option value="all">All Types</option>
+              <option value="error">Errors Only</option>
+              <option value="warning">Warnings Only</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Sort by:</label>
+            <select class="filter-select" id="sortBy" onchange="applyFilters()">
+              <option value="count">Most Common</option>
+              <option value="impact">Impact Level</option>
+              <option value="alpha">Alphabetical</option>
+            </select>
+          </div>
+          <button class="export-btn" onclick="exportToCSV()">📊 Export to CSV</button>
+        </div>
+        <div class="issue-list" id="issueList"></div>
+      </div>
+    </div>
+
+    <div class="results" id="pdfResults">
+      <div class="pdf-results" id="pdfResultsContent"></div>
+    </div>
+  </div>
+
+  <script>
+    let selectedFiles = [];
+    let currentTab = 'website';
+
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      
+      event.target.classList.add('active');
+      document.getElementById(tab + 'Tab').classList.add('active');
+      
+      hideResults();
+    }
+
+    function setUrl(url) {
+      document.getElementById('urlInput').value = url;
+    }
+
+    // Drag and drop handlers
+    const uploadArea = document.getElementById('uploadArea');
+    
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      handleFiles(e.dataTransfer.files);
+    });
+
+    function handleFiles(files) {
+      selectedFiles = Array.from(files).filter(f => f.type === 'application/pdf');
+      
+      if (selectedFiles.length === 0) {
+        showAlert('Please select PDF files only', 'error');
+        return;
+      }
+
+      if (selectedFiles.length > 10) {
+        showAlert('Maximum 10 files allowed', 'error');
+        selectedFiles = selectedFiles.slice(0, 10);
+      }
+
+      displayFileList();
+      document.getElementById('scanPdfBtn').style.display = 'inline-block';
+    }
+
+    function displayFileList() {
+      const fileList = document.getElementById('fileList');
+      fileList.classList.add('active');
+      fileList.innerHTML = selectedFiles.map((file, index) => `
+        <div class="file-item">
+          <span class="name">📄 ${file.name}</span>
+          <span class="size">${(file.size / 1024).toFixed(1)} KB</span>
+          <button onclick="removeFile(${index})">Remove</button>
+        </div>
+      `).join('');
+    }
+
+    function removeFile(index) {
+      selectedFiles.splice(index, 1);
+      if (selectedFiles.length === 0) {
+        document.getElementById('fileList').classList.remove('active');
+        document.getElementById('scanPdfBtn').style.display = 'none';
+      } else {
+        displayFileList();
+      }
+    }
+
+    async function scanWebsite() {
+      const urlInput = document.getElementById('urlInput');
+      const url = urlInput.value.trim();
+
+      if (!url) {
+        showAlert('Please enter a URL', 'error');
+        return;
+      }
+
+      let fullUrl = url;
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        fullUrl = 'https://' + url;
+      }
+
+      showLoading('Scanning website... This may take 30-60 seconds');
+      hideResults();
+
+      try {
+        const response = await fetch('/api/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: fullUrl })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || 'Scan failed');
+        }
+
+        displayWebsiteResults(data);
+        showAlert('Scan completed successfully!', 'success');
+
+      } catch (error) {
+        console.error('Error:', error);
+        showAlert(`Scan failed: ${error.message}`, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function scanPDFs() {
+      if (selectedFiles.length === 0) {
+        showAlert('Please select PDF files first', 'error');
+        return;
+      }
+
+      showLoading(`Scanning ${selectedFiles.length} PDF document(s)...`);
+      hideResults();
+
+      try {
+        const formData = new FormData();
+        selectedFiles.forEach(file => formData.append('pdfs', file));
+
+        const response = await fetch('/api/scan-pdf', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || 'PDF scan failed');
+        }
+
+        displayPDFResults(data);
+        showAlert(`Successfully scanned ${data.totalFiles} PDF document(s)`, 'success');
+
+      } catch (error) {
+        console.error('Error:', error);
+        showAlert(`PDF scan failed: ${error.message}`, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    let allIssuesData = [];
+    let currentFilters = { type: 'all', sort: 'count' };
+
+    function displayWebsiteResults(data) {
+      const { summary, categories, detailedIssues, totalUniqueIssues } = data;
+      allIssuesData = detailedIssues;
+
+      document.getElementById('pageInfo').innerHTML = `
+        <div class="page-info-row">
+          <strong>Page:</strong>
+          <span>${summary.title || 'Untitled'}</span>
+        </div>
+        <div class="page-info-row">
+          <strong>URL:</strong>
+          <a href="${summary.url}" target="_blank">${summary.url}</a>
+        </div>
+        <div class="page-info-row">
+          <strong>Scanned:</strong>
+          <span>${new Date(summary.timestamp).toLocaleString()}</span>
+        </div>
+        <div class="page-info-row">
+          <strong>Unique Issues:</strong>
+          <span>${totalUniqueIssues} different issue types found</span>
+        </div>
+      `;
+
+      document.getElementById('totalIssues').textContent = summary.total;
+      document.getElementById('totalErrors').textContent = summary.errors;
+      document.getElementById('totalWarnings').textContent = summary.warnings;
+      document.getElementById('totalNotices').textContent = summary.notices;
+
+      const categoryChart = document.getElementById('categoryChart');
+      categoryChart.innerHTML = '';
+      Object.entries(categories).forEach(([principle, count]) => {
+        if (count > 0) {
+          const percentage = ((count / summary.total) * 100).toFixed(1);
+          categoryChart.innerHTML += `
+            <div class="chart-item">
+              <div class="label">${principle}</div>
+              <div class="value">${count}<span class="percentage">${percentage}%</span></div>
+            </div>
+          `;
+        }
+      });
+
+      renderIssueList(allIssuesData);
+
+      document.getElementById('results').classList.add('active');
+      document.getElementById('pdfResults').classList.remove('active');
+      document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function renderIssueList(issues) {
+      const issueList = document.getElementById('issueList');
+      issueList.innerHTML = '';
+      
+      issues.forEach((issue, index) => {
+        const typeClass = issue.type === 'error' ? 'error' : 'warning';
+        const impactClass = `impact-${issue.impact}`;
+        const occurrenceText = issue.count === 1 ? '1 location' : `${issue.count} locations`;
+        
+        const plainText = getPlainLanguageExplanation(issue.code, issue.message);
+        
+        let occurrencesHTML = '';
+        issue.occurrences.forEach((occ, occIndex) => {
+          const elementDescription = describeElement(occ.selector, occ.context);
+          occurrencesHTML += `
+            <div class="occurrence">
+              <div class="occurrence-header">📍 Location ${occIndex + 1}</div>
+              <div class="plain-language">
+                <strong>🎯 Summary:</strong>
+                <div class="what">${elementDescription}</div>
+                <button class="technical-toggle" onclick="toggleTechnical(${index}, ${occIndex})">Show Technical Details</button>
+              </div>
+              <div class="technical-details" id="tech-${index}-${occIndex}">
+                <div class="selector-box"><strong>CSS Selector:</strong><br>${escapeHtml(occ.selector)}</div>
+                <div class="context-box"><strong>HTML Code:</strong><br>${escapeHtml(occ.context)}</div>
+              </div>
+            </div>
+          `;
+        });
+
+        issueList.innerHTML += `
+          <div class="issue-item ${typeClass}" data-type="${issue.type}" data-impact="${issue.impact}">
+            <div class="issue-header">
+              <span class="issue-badge ${typeClass}">${issue.type}</span>
+              <span class="impact-badge ${impactClass}">${issue.impact}</span>
+              <span class="issue-count">${occurrenceText}</span>
+            </div>
+            <div class="plain-language" style="margin-top: 12px;">
+              <strong>Summary:</strong>
+              <div class="what">${plainText.what}</div>
+              <div class="why">Why it matters: ${plainText.why}</div>
+            </div>
+            <div class="issue-code" style="margin-top: 12px;">Technical Code: ${issue.code}</div>
+            <div class="issue-message" style="font-size: 13px; color: #718096;">${issue.message}</div>
+            <button class="toggle-details" onclick="toggleDetails(${index})">
+              ▼ Show All Locations
+            </button>
+            <div class="issue-details" id="details-${index}">
+              ${occurrencesHTML}
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function toggleDetails(index) {
+      const details = document.getElementById(`details-${index}`);
+      const button = event.target;
+      
+      if (details.classList.contains('expanded')) {
+        details.classList.remove('expanded');
+        button.textContent = '▼ Show All Locations';
+      } else {
+        details.classList.add('expanded');
+        button.textContent = '▲ Hide Locations';
+      }
+    }
+
+    function applyFilters() {
+      currentFilters.type = document.getElementById('filterType').value;
+      currentFilters.sort = document.getElementById('sortBy').value;
+
+      let filtered = [...allIssuesData];
+
+      // Filter by type
+      if (currentFilters.type !== 'all') {
+        filtered = filtered.filter(issue => issue.type === currentFilters.type);
+      }
+
+      // Sort
+      if (currentFilters.sort === 'count') {
+        filtered.sort((a, b) => b.count - a.count);
+      } else if (currentFilters.sort === 'impact') {
+        const impactOrder = { critical: 0, serious: 1, moderate: 2, minor: 3, unknown: 4 };
+        filtered.sort((a, b) => impactOrder[a.impact] - impactOrder[b.impact]);
+      } else if (currentFilters.sort === 'alpha') {
+        filtered.sort((a, b) => a.code.localeCompare(b.code));
+      }
+
+      renderIssueList(filtered);
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function toggleTechnical(issueIndex, occIndex) {
+      const elem = document.getElementById(`tech-${issueIndex}-${occIndex}`);
+      const btn = event.target;
+      if (elem.classList.contains('visible')) {
+        elem.classList.remove('visible');
+        btn.textContent = 'Show Technical Details';
+      } else {
+        elem.classList.add('visible');
+        btn.textContent = 'Hide Technical Details';
+      }
+    }
+
+    function describeElement(selector, context) {
+      // Convert technical selector to plain English
+      let description = '';
+      
+      if (selector.includes('button')) {
+        description = 'A button';
+      } else if (selector.includes('a[') || selector.includes('a:')) {
+        description = 'A link';
+      } else if (selector.includes('img')) {
+        description = 'An image';
+      } else if (selector.includes('input')) {
+        description = 'A form field';
+      } else if (selector.includes('nav')) {
+        description = 'A navigation menu item';
+      } else if (selector.includes('header')) {
+        description = 'An element in the page header';
+      } else if (selector.includes('footer')) {
+        description = 'An element in the page footer';
+      } else {
+        description = 'An element';
+      }
+
+      // Try to extract text content or class name
+      const classMatch = context.match(/class="([^"]+)"/);
+      const textMatch = context.match(/>([^<]{1,50})</)
+      
+      if (textMatch && textMatch[1].trim()) {
+        description += ` that says "${textMatch[1].trim()}"`;
+      } else if (classMatch) {
+        const className = classMatch[1].split(' ')[0];
+        description += ` with style "${className}"`;
+      }
+      
+      return description;
+    }
+
+    function getPlainLanguageExplanation(code, technicalMessage) {
+      const explanations = {
+        'color-contrast': {
+          what: 'Text is too hard to read because there isn\'t enough contrast between the text color and the background color.',
+          why: 'People with low vision or color blindness can\'t read the text easily.'
+        },
+        'link-in-text-block': {
+          what: 'A link looks too similar to regular text - it\'s hard to tell it\'s clickable.',
+          why: 'Users might not realize they can click it, or might click the wrong thing.'
+        },
+        'duplicate-id': {
+          what: 'Two elements on the page have the same ID, which confuses screen readers.',
+          why: 'Screen reader users might jump to the wrong location or miss important content.'
+        },
+        'image-alt': {
+          what: 'An image is missing a description (alt text).',
+          why: 'Blind users using screen readers can\'t tell what the image shows.'
+        },
+        'label': {
+          what: 'A form field is missing a label that describes what it\'s for.',
+          why: 'Users (especially screen reader users) won\'t know what to type in the field.'
+        },
+        'heading-order': {
+          what: 'Headings are out of order (like jumping from Heading 1 to Heading 4).',
+          why: 'Screen reader users use headings to navigate - wrong order makes the page confusing.'
+        },
+        'aria': {
+          what: 'Accessibility code (ARIA) is used incorrectly.',
+          why: 'Screen readers will announce the wrong information or get confused.'
+        },
+        'landmark': {
+          what: 'The page is missing navigation landmarks (like "main content" or "navigation").',
+          why: 'Screen reader users can\'t quickly jump to different sections of the page.'
+        },
+        'region': {
+          what: 'A section of the page needs a label so screen readers know what it is.',
+          why: 'Without labels, screen reader users can\'t understand the page structure.'
+        }
+      };
+
+      // Find matching explanation
+      for (const [key, value] of Object.entries(explanations)) {
+        if (code.toLowerCase().includes(key) || technicalMessage.toLowerCase().includes(key)) {
+          return value;
+        }
+      }
+
+      // Default explanation
+      return {
+        what: technicalMessage,
+        why: 'This makes the website harder to use for people with disabilities.'
+      };
+    }
+
+    function exportToCSV() {
+      if (!allIssuesData || allIssuesData.length === 0) {
+        alert('No data to export');
+        return;
+      }
+
+      let csv = 'Issue Code,Type,Impact,Message,Occurrences,CSS Selector,HTML Context,Fix URL\n';
+
+      allIssuesData.forEach(issue => {
+        issue.occurrences.forEach((occ, idx) => {
+          const row = [
+            `"${issue.code}"`,
+            issue.type,
+            issue.impact,
+            `"${issue.message.replace(/"/g, '""')}"`,
+            idx === 0 ? issue.count : '',
+            `"${occ.selector.replace(/"/g, '""')}"`,
+            `"${occ.context.replace(/"/g, '""').substring(0, 200)}..."`,
+            issue.helpUrl || ''
+          ];
+          csv += row.join(',') + '\n';
+        });
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ada-scan-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    }
+
+    function displayPDFResults(data) {
+      const { totalFiles, results, summary } = data;
+
+      const content = document.getElementById('pdfResultsContent');
+      content.innerHTML = `
+        <div class="page-info">
+          <div class="page-info-row">
+            <strong>Files Scanned:</strong>
+            <span>${totalFiles}</span>
+          </div>
+          <div class="page-info-row">
+            <strong>Total Issues:</strong>
+            <span>${summary.totalIssues}</span>
+          </div>
+          <div class="page-info-row">
+            <strong>Total Warnings:</strong>
+            <span>${summary.totalWarnings}</span>
+          </div>
+        </div>
+      `;
+
+      results.forEach(result => {
+        const totalProblems = result.issues.length + result.warnings.length;
+        let status = 'success';
+        if (result.issues.length > 0) status = 'error';
+        else if (result.warnings.length > 0) status = 'warning';
+
+        content.innerHTML += `
+          <div class="pdf-card">
+            <h3>
+              📄 ${result.filename}
+              <span class="status ${status}">
+                ${totalProblems === 0 ? 'Passed' : totalProblems + ' issue(s)'}
+              </span>
+            </h3>
+            <div style="color: #718096; font-size: 13px; margin-top: 4px;">
+              Size: ${(result.size / 1024).toFixed(1)} KB
+            </div>
+            ${result.issues.length > 0 ? `
+              <div class="pdf-issues">
+                <strong style="color: #c53030; font-size: 14px;">Critical Issues:</strong>
+                ${result.issues.map(issue => `
+                  <div class="pdf-issue error">❌ ${issue}</div>
+                `).join('')}
+              </div>
+            ` : ''}
+            ${result.warnings.length > 0 ? `
+              <div class="pdf-issues">
+                <strong style="color: #7c2d12; font-size: 14px;">Warnings:</strong>
+                ${result.warnings.map(warning => `
+                  <div class="pdf-issue warning">⚠️ ${warning}</div>
+                `).join('')}
+              </div>
+            ` : ''}
+            ${totalProblems === 0 ? `
+              <div style="margin-top: 16px; color: #22543d; font-weight: 500;">
+                ✅ No accessibility issues detected in basic scan
+              </div>
+            ` : ''}
+          </div>
+        `;
+      });
+
+      document.getElementById('results').classList.remove('active');
+      document.getElementById('pdfResults').classList.add('active');
+      document.getElementById('pdfResults').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function showLoading(text) {
+      document.getElementById('loadingText').textContent = text;
+      document.getElementById('loading').classList.add('active');
+      document.getElementById('scanBtn').disabled = true;
+      document.getElementById('scanPdfBtn').disabled = true;
+    }
+
+    function hideLoading() {
+      document.getElementById('loading').classList.remove('active');
+      document.getElementById('scanBtn').disabled = false;
+      document.getElementById('scanPdfBtn').disabled = false;
+    }
+
+    function hideResults() {
+      document.getElementById('results').classList.remove('active');
+      document.getElementById('pdfResults').classList.remove('active');
+      document.getElementById('alertMessage').classList.remove('active');
+    }
+
+    function showAlert(message, type) {
+      const alert = document.getElementById('alertMessage');
+      alert.textContent = message;
+      alert.className = `alert ${type} active`;
+      setTimeout(() => alert.classList.remove('active'), 5000);
+    }
+
+    // Allow Enter key to trigger scan
+    document.getElementById('urlInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') scanWebsite();
+    });
+  </script>
+</body>
+</html>

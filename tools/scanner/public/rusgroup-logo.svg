@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 400" width="300" height="75">
+  <!-- Gold laurel wreath left side -->
+  <g fill="#B8985F">
+    <path d="M50 200 Q60 180 70 165 L65 170 Q58 185 52 200 Z"/>
+    <path d="M55 190 Q65 175 75 162 L72 166 Q64 178 58 190 Z"/>
+    <path d="M70 165 Q80 148 92 135 L88 140 Q78 152 72 165 Z"/>
+    <path d="M75 158 Q85 142 97 130 L94 134 Q84 146 78 158 Z"/>
+    <path d="M92 135 Q105 118 120 105 L116 110 Q103 122 95 135 Z"/>
+    <path d="M97 128 Q110 112 125 100 L122 104 Q108 116 100 128 Z"/>
+    <path d="M120 105 Q135 90 152 78 L148 83 Q133 95 122 105 Z"/>
+    <path d="M125 98 Q140 84 157 73 L154 77 Q138 89 128 98 Z"/>
+  </g>
+  
+  <!-- Gold laurel wreath right side -->
+  <g fill="#B8985F">
+    <path d="M290 200 Q280 180 270 165 L275 170 Q282 185 288 200 Z"/>
+    <path d="M285 190 Q275 175 265 162 L268 166 Q276 178 282 190 Z"/>
+    <path d="M270 165 Q260 148 248 135 L252 140 Q262 152 268 165 Z"/>
+    <path d="M265 158 Q255 142 243 130 L246 134 Q256 146 262 158 Z"/>
+    <path d="M248 135 Q235 118 220 105 L224 110 Q237 122 245 135 Z"/>
+    <path d="M243 128 Q230 112 215 100 L218 104 Q232 116 240 128 Z"/>
+    <path d="M220 105 Q205 90 188 78 L192 83 Q207 95 218 105 Z"/>
+    <path d="M215 98 Q200 84 183 73 L186 77 Q202 89 212 98 Z"/>
+  </g>
+  
+  <!-- Center circle with gold gradient -->
+  <circle cx="170" cy="200" r="85" fill="#D4AF37"/>
+  <circle cx="170" cy="200" r="78" fill="white"/>
+  <circle cx="170" cy="200" r="65" fill="#f8f8f8"/>
+  
+  <!-- Gold bottom accent in circle -->
+  <ellipse cx="170" cy="230" rx="45" ry="25" fill="#D4AF37" opacity="0.3"/>
+  
+  <!-- Text: rusGroup -->
+  <text x="360" y="255" font-family="'Arial Black', Arial, sans-serif" font-size="165" font-weight="900" fill="#3B5F7E" letter-spacing="-5">rusGroup</text>
+  
+  <!-- Gold underline -->
+  <rect x="360" y="275" width="1180" height="12" fill="#D4AF37"/>
+  <rect x="360" y="287" width="1180" height="3" fill="#B8985F"/>
+</svg>
