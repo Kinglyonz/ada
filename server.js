@@ -267,7 +267,7 @@ app.post('/api/scan', async (req, res) => {
   }
 });
 
-// --- Gap Analysis (Crawler) ---
+// --- Compliance Scanner (Crawler) ---
 app.post('/api/crawl/start', upload.none(), async (req, res) => {
   const { url, maxPages } = req.body;
   if (!url) return res.status(400).json({ error: 'URL is required' });
@@ -285,7 +285,7 @@ app.post('/api/crawl/start', upload.none(), async (req, res) => {
 
       // Start Background Crawl
       try {
-        const urls = await crawler.crawl(url, parseInt(maxPages) || 50);
+        const urls = await crawler.crawl(url, maxPages ? parseInt(maxPages) : Infinity);
         console.log(`[API] Crawl found ${urls.length} pages. Queueing scans...`);
 
         db.db.run("UPDATE crawls SET total_pages = ? WHERE id = ?", [urls.length, crawlId]);
@@ -327,16 +327,16 @@ app.post('/api/crawl/discover', upload.none(), async (req, res) => {
 
       // Start Background Discovery (Live Streaming)
       try {
-        const limit = parseInt(maxPages) || 500;
+        const limit = maxPages ? parseInt(maxPages) : Infinity; // No limit by default - scan all pages
         const discoveredUrls = new Set();
 
-        // Callback for real-time DB insertion
-        const onDiscover = (u) => {
+        // Callback for real-time DB insertion with DEPTH TRACKING
+        const onDiscover = (u, depth = 0, parentUrl = null) => {
           if (!u || discoveredUrls.has(u)) return;
           discoveredUrls.add(u);
 
-          const stmt = db.db.prepare(`INSERT INTO scans (url, score, total_issues, errors, warnings, notices, detailed_json, crawl_id, scan_status) VALUES (?, 0, 0, 0, 0, 0, '[]', ?, 'pending')`);
-          stmt.run(u, crawlId, (err) => {
+          const stmt = db.db.prepare(`INSERT INTO scans (url, score, total_issues, errors, warnings, notices, detailed_json, crawl_id, scan_status, depth, parent_url) VALUES (?, 0, 0, 0, 0, 0, '[]', ?, 'pending', ?, ?)`);
+          stmt.run(u, crawlId, depth, parentUrl, (err) => {
             if (err) console.error('Error inserting live scan:', err.message);
           });
           stmt.finalize();
@@ -358,12 +358,34 @@ app.post('/api/crawl/discover', upload.none(), async (req, res) => {
   }
 });
 
+// Stop Discovery (Abort crawl)
+app.post('/api/crawl/stop/:id', (req, res) => {
+  const crawlId = parseInt(req.params.id);
+  console.log(`[API] Stopping discovery for crawl ${crawlId}`);
+
+  // Set abort flag in crawler
+  const aborted = crawler.abortCrawl(crawlId);
+
+  // Update DB status to stopped
+  db.db.run("UPDATE crawls SET status = 'stopped' WHERE id = ?", [crawlId]);
+
+  res.json({ success: true, aborted, message: 'Discovery stopped' });
+});
+
+// Get the latest crawl ID (for Site Map refresh after page reload)
+app.get('/api/crawl/latest', (req, res) => {
+  db.db.get("SELECT id FROM crawls ORDER BY timestamp DESC LIMIT 1", (err, row) => {
+    if (err || !row) return res.json({ crawlId: null });
+    res.json({ crawlId: row.id });
+  });
+});
+
 app.get('/api/crawl/status/:id', (req, res) => {
   const crawlId = req.params.id;
   db.db.get("SELECT * FROM crawls WHERE id = ?", [crawlId], (err, crawl) => {
     if (err || !crawl) return res.status(404).json({ error: 'Not found' });
 
-    db.db.all("SELECT id, url, score, total_issues, errors, timestamp, scan_status FROM scans WHERE crawl_id = ? ORDER BY timestamp DESC", [crawlId], (err, scans) => {
+    db.db.all("SELECT id, url, score, total_issues, errors, timestamp, scan_status, depth, parent_url FROM scans WHERE crawl_id = ? ORDER BY depth ASC, timestamp DESC", [crawlId], (err, scans) => {
       if (err) return res.status(500).json({ error: 'DB Error' });
 
       const progress = crawl.total_pages > 0 ? Math.round((scans.length / crawl.total_pages) * 100) : 0;
@@ -464,7 +486,7 @@ app.get('/api/report/crawl/:id', (req, res) => {
       if (err) return res.status(500).json({ error: 'DB Error ' });
 
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename=gap-analysis-${crawlId}.pdf`);
+      res.setHeader('Content-Disposition', `attachment; filename=compliance-report-${crawlId}.pdf`);
       generateCrawlReport(crawl, scans, res);
     });
   });
@@ -479,7 +501,7 @@ app.get('/api/report/crawl/:id/csv', (req, res) => {
       if (err) return res.status(500).send('DB Error');
 
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-      res.setHeader('Content-Disposition', `attachment; filename=gap-analysis-${crawl.domain}-${new Date().toISOString().split('T')[0]}.csv`);
+      res.setHeader('Content-Disposition', `attachment; filename=compliance-report-${crawl.domain}-${new Date().toISOString().split('T')[0]}.csv`);
 
       // Enhanced CSV with detailed issue breakdown
       let csv = '\uFEFF'; // UTF-8 BOM for Excel compatibility
@@ -604,7 +626,7 @@ app.post('/api/download-html', (req, res) => {
   }
 });
 
-// CSV Export for Crawl Results (Gap Analysis)
+// CSV Export for Crawl Results (Compliance Scanner)
 app.get('/api/report/crawl/:id/csv', (req, res) => {
   const crawlId = req.params.id;
 
@@ -653,7 +675,7 @@ app.get('/api/report/crawl/:id/csv', (req, res) => {
 
     // Send as download
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="gap-analysis-${crawlId}.csv"`);
+    res.setHeader('Content-Disposition', `attachment; filename="compliance-report-${crawlId}.csv"`);
     res.send(csv);
   });
 });

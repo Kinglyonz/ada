@@ -3,6 +3,32 @@ const https = require('https');
 const http = require('http');
 const { URL } = require('url');
 
+// Track active crawls for abort capability
+const activeCrawls = new Map(); // crawlId -> { aborted: false }
+
+function abortCrawl(crawlId) {
+    const crawl = activeCrawls.get(crawlId);
+    if (crawl) {
+        crawl.aborted = true;
+        console.log(`🛑 Crawl ${crawlId} abort signal set`);
+        return true;
+    }
+    return false;
+}
+
+function startCrawlTracking(crawlId) {
+    activeCrawls.set(crawlId, { aborted: false });
+}
+
+function isAborted(crawlId) {
+    const crawl = activeCrawls.get(crawlId);
+    return crawl ? crawl.aborted : false;
+}
+
+function cleanupCrawl(crawlId) {
+    activeCrawls.delete(crawlId);
+}
+
 // Helper to ensure protocol
 const ensureProtocol = (url) => {
     if (!url.match(/^https?:\/\//i)) {
@@ -37,16 +63,20 @@ const fetchUrl = (url, headers) => {
     });
 };
 
-// FAST CRAWL (Static)
+// FAST CRAWL with Depth Tracking (Static)
 async function fastCrawl(startUrl, maxPages, onDiscover) {
-    console.log(`🚀 Starting FAST static crawl for ${startUrl}`);
+    console.log(`🚀 Starting FAST static crawl with DEPTH TRACKING for ${startUrl}`);
     const visited = new Set();
-    const queue = [startUrl];
-    const results = [];
-    const domain = new URL(startUrl).hostname; // startUrl is already normalized by ensureProtocol
+    const depthMap = new Map(); // url -> {depth, parentUrl}
 
-    // Add start URL immediately
-    if (onDiscover) onDiscover(startUrl);
+    // Queue now holds objects with depth info
+    const queue = [{ url: startUrl, depth: 0, parentUrl: null }];
+    const results = [];
+    const domain = new URL(startUrl).hostname;
+
+    // Add start URL immediately (depth 0)
+    depthMap.set(startUrl, { depth: 0, parentUrl: null });
+    if (onDiscover) onDiscover(startUrl, 0, null);
 
     const normalizeUrl = (url) => {
         try {
@@ -61,23 +91,23 @@ async function fastCrawl(startUrl, maxPages, onDiscover) {
     while (queue.length > 0 && visited.size < maxPages) {
         const batch = [];
         while (queue.length > 0 && batch.length < MAX_CONCURRENT && visited.size + batch.length < maxPages) {
-            const url = queue.shift();
-            if (!visited.has(url)) {
-                visited.add(url);
-                batch.push(url);
-                results.push(url);
-                // Call callback only if it's new (visited check passed)
-                // Note: startUrl was added manually, so skip it? 
-                // Actually startUrl is in queue but not visited set initially.
-                // We'll trust the caller to handle dupes or just let it fire.
-                if (onDiscover && url !== startUrl) onDiscover(url);
+            const item = queue.shift();
+            if (!visited.has(item.url)) {
+                visited.add(item.url);
+                batch.push(item);
+                results.push({ url: item.url, depth: item.depth, parentUrl: item.parentUrl });
+
+                // Call callback with depth info
+                if (onDiscover && item.url !== startUrl) {
+                    onDiscover(item.url, item.depth, item.parentUrl);
+                }
             }
         }
 
         if (batch.length === 0) break;
 
-        await Promise.all(batch.map(async (url) => {
-            const res = await fetchUrl(url, { 'User-Agent': UA });
+        await Promise.all(batch.map(async (item) => {
+            const res = await fetchUrl(item.url, { 'User-Agent': UA });
 
             if (res.body && res.status >= 200 && res.status < 300) {
                 // Extract links
@@ -85,11 +115,16 @@ async function fastCrawl(startUrl, maxPages, onDiscover) {
                 let match;
                 while ((match = linkRegex.exec(res.body)) !== null) {
                     try {
-                        const absolute = new URL(match[1], url).href;
+                        const absolute = new URL(match[1], item.url).href;
                         const norm = normalizeUrl(absolute);
                         if (norm && new URL(norm).hostname.replace(/^www\./, '') === domain.replace(/^www\./, '') && !norm.match(/\.(pdf|jpg|png|css|js|zip|docx|xml)$/i)) {
-                            if (!visited.has(norm) && !queue.includes(norm)) {
-                                queue.push(norm);
+                            if (!visited.has(norm) && !queue.some(q => q.url === norm)) {
+                                // New page found - it's one level deeper than current page
+                                queue.push({
+                                    url: norm,
+                                    depth: item.depth + 1,
+                                    parentUrl: item.url
+                                });
                             }
                         }
                     } catch (e) { }
@@ -100,32 +135,26 @@ async function fastCrawl(startUrl, maxPages, onDiscover) {
         await new Promise(r => setTimeout(r, 100));
     }
 
+    console.log(`✅ Fast crawl complete. Max depth reached: ${Math.max(...results.map(r => r.depth))}`);
     return results;
 }
 
-// MAIN CRAWL FUNCTION (Hybrid)
-// MAIN CRAWL FUNCTION (Hybrid)
-async function crawl(rawUrl, maxPages = 500, onDiscover = null) {
-    const startUrl = ensureProtocol(rawUrl); // Normalize first
+// MAIN CRAWL FUNCTION with Depth Tracking
+async function crawl(rawUrl, maxPages = Infinity, onDiscover = null) {
+    const startUrl = ensureProtocol(rawUrl);
+    let allResults = [];
+    let staticResults = [];
 
     try {
-        console.log(`🕵️ Attempting Fast Static Discovery first for ${startUrl}...`);
-        const staticResults = await fastCrawl(startUrl, maxPages, onDiscover);
-
-        // Return if successful (relaxed threshold to 1 because even finding homepage is valid)
-        // USER REQUEST: Prioritize Accuracy over Speed. Disable early return to ensure deep crawl.
-        /*
-        if (staticResults.length > 0) {
-            console.log(`⚡ Fast Discovery successful! Found ${staticResults.length} pages.`);
-            return staticResults;
-        }
-        */
-        console.log(`⚡ Fast Discovery found ${staticResults.length} pages. Proceeding to Deep Crawl for accuracy...`);
+        console.log(`🕵️ Attempting Fast Static Discovery with DEPTH TRACKING for ${startUrl}...`);
+        staticResults = await fastCrawl(startUrl, maxPages, onDiscover);
+        allResults = staticResults;
+        console.log(`⚡ Fast Discovery found ${staticResults.length} pages. Max depth: ${Math.max(...staticResults.map(r => r.depth || 0))}`);
     } catch (e) {
         console.error('Fast crawl failed, continuing to Puppeteer:', e.message);
     }
 
-    // FALLBACK TO PUPPETEER (Ensure we use static results as seed if available)
+    // FALLBACK TO PUPPETEER for deeper crawling
     let browser;
     try {
         browser = await puppeteer.launch({
@@ -140,7 +169,7 @@ async function crawl(rawUrl, maxPages = 500, onDiscover = null) {
             ignoreHTTPSErrors: true
         });
         const page = await browser.newPage();
-        page.setDefaultNavigationTimeout(15000); // reduced from 30s to 15s to prevent long hangs
+        page.setDefaultNavigationTimeout(15000);
 
         await page.setRequestInterception(true);
         page.on('request', (req) => {
@@ -161,52 +190,55 @@ async function crawl(rawUrl, maxPages = 500, onDiscover = null) {
         };
 
         const visited = new Set();
-        // Seed queue with static results to ensure we cover them + find dynamic children
-        // We add startUrl explicitly first
-        let queue = [normalizeUrl(startUrl)];
+        const depthMap = new Map();
 
-        // Add all static results to queue if they aren't the start URL
+        // Initialize with start URL
+        const startNorm = normalizeUrl(startUrl);
+        let queue = [{ url: startNorm, depth: 0, parentUrl: null }];
+        depthMap.set(startNorm, { depth: 0, parentUrl: null });
+
+        // Add static results to queue with their known depths
         if (staticResults && staticResults.length > 0) {
-            staticResults.forEach(u => {
-                const norm = normalizeUrl(u);
-                if (norm !== queue[0] && !queue.includes(norm)) {
-                    queue.push(norm);
+            staticResults.forEach(item => {
+                const norm = normalizeUrl(item.url || item);
+                const depth = item.depth || 1;
+                const parentUrl = item.parentUrl || startNorm;
+
+                if (norm !== startNorm && !queue.some(q => q.url === norm)) {
+                    queue.push({ url: norm, depth, parentUrl });
+                    depthMap.set(norm, { depth, parentUrl });
                 }
             });
             console.log(`📥 Seeded Puppeteer queue with ${queue.length} pages from Fast Crawl`);
         }
 
-        // We do NOT add them to 'visited' yet because we want Puppeteer to actually VISIT them 
-        // to find dynamic links *on* them.
         const results = [];
-        // Extract domain safely
         let domain;
         try { domain = new URL(startUrl).hostname; } catch (e) { domain = ''; }
 
-        console.log(`🕷️ Starting Puppeteer crawl of ${domain}`);
+        console.log(`🕷️ Starting Puppeteer crawl of ${domain} with DEPTH TRACKING`);
 
         let consecutiveNoNewPages = 0;
-        const STALENESS_LIMIT = 15; // Stop if 15 pages visited with NO new discoveries
+        const STALENESS_LIMIT = 15;
 
         while (queue.length > 0 && visited.size < maxPages) {
-            // Check staleness
             if (consecutiveNoNewPages >= STALENESS_LIMIT) {
                 console.log(`🛑 Discovery Staled: No new pages found in last ${STALENESS_LIMIT} visits. Stopping early.`);
                 break;
             }
 
-            const url = queue.shift();
-            if (visited.has(url)) continue;
+            const item = queue.shift();
+            if (visited.has(item.url)) continue;
 
             try {
-                await page.goto(url, { waitUntil: 'domcontentloaded' });
-                // REMOVED duplicate goto
-                visited.add(url);
-                results.push(url);
-                if (onDiscover) onDiscover(url); // Trigger callback for Puppeteer findings
+                await page.goto(item.url, { waitUntil: 'domcontentloaded' });
+                visited.add(item.url);
+                results.push({ url: item.url, depth: item.depth, parentUrl: item.parentUrl });
+
+                if (onDiscover) onDiscover(item.url, item.depth, item.parentUrl);
 
                 const links = await page.evaluate((currentDomain) => {
-                    if (!currentDomain) return []; // Safety
+                    if (!currentDomain) return [];
                     const normalizeHost = (host) => host.replace(/^www\./i, '');
                     const normalizedDomain = normalizeHost(currentDomain);
                     return Array.from(document.querySelectorAll('a'))
@@ -219,42 +251,15 @@ async function crawl(rawUrl, maxPages = 500, onDiscover = null) {
                         });
                 }, domain);
 
-                const preCount = results.length;
-                for (const link of links) {
-                    const normalizedLink = normalizeUrl(link);
-                    if (!visited.has(normalizedLink) && !queue.includes(normalizedLink)) {
-                        queue.push(normalizedLink);
-                    }
-                }
-
-                // Check if we added any new items to queue or results? 
-                // Wait, results aren't updated here? 
-                // Ah, results only track VISITED pages in this logic?
-                // No, results.push(url) happens above (line 177).
-                // But we want to know if we found NEW CANDIDATES.
-                // The queue growing is the sign of discovery.
-
-                // Let's verify if 'queue' grew?
-                // Or simply: Did we find any link that we haven't seen before?
-                // logic above: if (!visited.has(normalizedLink) && !queue.includes(normalizedLink))
-
-                const newFound = links.filter(l => {
-                    const n = normalizeUrl(l);
-                    return !visited.has(n) && !queue.includes(n); // Wait, queue includes check is expensive if heavy.
-                    // But effectively, did we push to queue?
-                }).length;
-                // Wait, logic above pushes to queue.
-                // Simpler: Compare queue length before and after?
-                // But queue shrinks by shift().
-
-                // Let's track if we added *anything* to queue this turn.
                 let addedNew = false;
                 for (const link of links) {
                     const normalizedLink = normalizeUrl(link);
-                    // Check logic again (it was queue.includes)
-                    // We can optimize queue check? No array.includes is fine for <500
-                    if (!visited.has(normalizedLink) && !queue.includes(normalizedLink)) {
-                        queue.push(normalizedLink);
+                    if (!visited.has(normalizedLink) && !queue.some(q => q.url === normalizedLink)) {
+                        queue.push({
+                            url: normalizedLink,
+                            depth: item.depth + 1,
+                            parentUrl: item.url
+                        });
                         addedNew = true;
                     }
                 }
@@ -266,10 +271,16 @@ async function crawl(rawUrl, maxPages = 500, onDiscover = null) {
                 }
 
             } catch (e) {
-                console.error(`Failed to crawl ${url}:`, e.message);
+                console.error(`Failed to crawl ${item.url}:`, e.message);
             }
         }
-        return results;
+
+        // Merge results - prefer puppeteer results as they have more accurate depth
+        const finalResults = results.length > 0 ? results : allResults;
+        const maxDepth = Math.max(...finalResults.map(r => r.depth || 0));
+        console.log(`✅ Crawl complete. Total pages: ${finalResults.length}, Max depth: ${maxDepth}`);
+
+        return finalResults;
 
     } catch (error) {
         console.error('Crawl fatal error:', error);
@@ -279,4 +290,4 @@ async function crawl(rawUrl, maxPages = 500, onDiscover = null) {
     }
 }
 
-module.exports = { crawl };
+module.exports = { crawl, abortCrawl, startCrawlTracking, isAborted, cleanupCrawl };

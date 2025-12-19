@@ -7,7 +7,7 @@ const db = new sqlite3.Database(dbPath);
 
 function init() {
     db.serialize(() => {
-        // Scans Table (Single Page)
+        // Scans Table (Single Page) with Depth Tracking
         db.run(`CREATE TABLE IF NOT EXISTS scans (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       url TEXT,
@@ -19,13 +19,29 @@ function init() {
       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
       crawl_id INTEGER,
       detailed_json TEXT,
-      scan_status TEXT DEFAULT 'complete'
+      scan_status TEXT DEFAULT 'complete',
+      depth INTEGER DEFAULT 0,
+      parent_url TEXT
     )`);
 
         // Add scan_status column if it doesn't exist (for existing databases)
         db.run(`ALTER TABLE scans ADD COLUMN scan_status TEXT DEFAULT 'complete'`, (err) => {
             if (err && !err.message.includes('duplicate column')) {
-                console.error('Error adding scan_status column:', err);
+                // Ignore duplicate column errors
+            }
+        });
+
+        // Add depth column if it doesn't exist (for existing databases)
+        db.run(`ALTER TABLE scans ADD COLUMN depth INTEGER DEFAULT 0`, (err) => {
+            if (err && !err.message.includes('duplicate column')) {
+                // Ignore duplicate column errors
+            }
+        });
+
+        // Add parent_url column if it doesn't exist (for existing databases)
+        db.run(`ALTER TABLE scans ADD COLUMN parent_url TEXT`, (err) => {
+            if (err && !err.message.includes('duplicate column')) {
+                // Ignore duplicate column errors
             }
         });
 

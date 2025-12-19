@@ -56,7 +56,7 @@ function generateCrawlReport(crawl, scans, res) {
     doc.pipe(res);
 
     // Title
-    doc.fontSize(24).font('Helvetica-Bold').text('Digital Accessibility Gap Analysis', { align: 'center' });
+    doc.fontSize(24).font('Helvetica-Bold').text('Digital Accessibility Compliance Report', { align: 'center' });
     doc.fontSize(14).text('Executive Summary', { align: 'center' });
     doc.moveDown();
 
