@@ -1,0 +1,77 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'ADA Compliance Scanner - Client Environment (RDS + App Runner)'
+
+Parameters:
+  ClientName:
+    Type: String
+    Description: Name of the client (used for naming resources)
+    AllowedPattern: "^[a-zA-Z0-9]+$"
+  
+  GitHubConnectionArn:
+    Type: String
+    Description: ARN of the App Runner GitHub Connection
+  
+  GitHubRepositoryUrl:
+    Type: String
+    Description: Repository URL
+  
+  GitHubBranch:
+    Type: String
+    Description: Branch to deploy
+    Default: main
+
+Resources:
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow access to RDS
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: 0.0.0.0/0
+
+  DatabaseContainer:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: !Sub "${ClientName}-ada-db"
+      Engine: postgres
+      EngineVersion: "16.3"
+      DBInstanceClass: db.t3.micro
+      AllocatedStorage: 20
+      MasterUsername: postgres
+      MasterUserPassword: !Sub "${ClientName}Password123!"
+      PubliclyAccessible: true
+      VPCSecurityGroups:
+        - !Ref DatabaseSecurityGroup
+
+  AppService:
+    Type: AWS::AppRunner::Service
+    Properties:
+      ServiceName: !Sub "${ClientName}-ada-app"
+      SourceConfiguration:
+        AuthenticationConfiguration:
+          ConnectionArn: !Ref GitHubConnectionArn
+        AutoDeploymentsEnabled: true
+        CodeRepository:
+          RepositoryUrl: !Ref GitHubRepositoryUrl
+          SourceCodeVersion:
+            Type: BRANCH
+            Value: !Ref GitHubBranch
+          CodeConfiguration:
+            ConfigurationSource: API
+            CodeConfigurationValues:
+              Runtime: NODEJS_18
+              BuildCommand: "npm install"
+              StartCommand: "node server.js"
+              Port: "3000"
+              RuntimeEnvironmentVariables:
+                - Name: PORT
+                  Value: "3000"
+                - Name: DATABASE_URL
+                  Value: !Sub "postgres://postgres:${ClientName}Password123!@${DatabaseContainer.Endpoint.Address}:5432/postgres"
+
+Outputs:
+  ServiceUrl:
+    Description: URL of the App Runner Service
+    Value: !GetAtt AppService.ServiceUrl

@@ -8,7 +8,10 @@ const { exec } = require('child_process');
 
 // Import data services
 let db;
-if (process.env.SUPABASE_URL) {
+if (process.env.DATABASE_URL) {
+  console.log('🐘 Using AWS RDS / PostgreSQL Database');
+  db = require('./services/db-postgres');
+} else if (process.env.SUPABASE_URL) {
   console.log('☁️ Using Supabase Database');
   db = require('./services/db-supabase');
 } else {
