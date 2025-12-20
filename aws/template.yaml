@@ -21,30 +21,6 @@ Parameters:
     Default: main
 
 Resources:
-  DatabaseSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Allow access to RDS
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 5432
-          ToPort: 5432
-          CidrIp: 0.0.0.0/0
-
-  DatabaseContainer:
-    Type: AWS::RDS::DBInstance
-    Properties:
-      DBInstanceIdentifier: !Sub "${ClientName}-ada-db"
-      Engine: postgres
-      EngineVersion: "16.3"
-      DBInstanceClass: db.t3.micro
-      AllocatedStorage: 20
-      MasterUsername: postgres
-      MasterUserPassword: !Sub "${ClientName}Password123!"
-      PubliclyAccessible: true
-      VPCSecurityGroups:
-        - !Ref DatabaseSecurityGroup
-
   AppService:
     Type: AWS::AppRunner::Service
     Properties:
@@ -68,8 +44,10 @@ Resources:
               RuntimeEnvironmentVariables:
                 - Name: PORT
                   Value: "3000"
-                - Name: DATABASE_URL
-                  Value: !Sub "postgres://postgres:${ClientName}Password123!@${DatabaseContainer.Endpoint.Address}:5432/postgres"
+                - Name: SUPABASE_URL
+                  Value: "https://dlfxpkixljqdiajantxy.supabase.co"
+                - Name: SUPABASE_SERVICE_KEY
+                  Value: "sb_secret_5GaJ-2asybNlcIurMObfyQ_lvwW7P5Y"
 
 Outputs:
   ServiceUrl:
