@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const pa11y = require('pa11y');
 const path = require('path');
@@ -6,7 +7,14 @@ const multer = require('multer');
 const { exec } = require('child_process');
 
 // Import data services
-const db = require('./services/db');
+let db;
+if (process.env.SUPABASE_URL) {
+  console.log('☁️ Using Supabase Database');
+  db = require('./services/db-supabase');
+} else {
+  console.log('📂 Using Local SQLite Database');
+  db = require('./services/db');
+}
 const crawler = require('./services/crawler');
 const scanQueue = require('./services/scanQueue');
 const contentAnalysis = require('./services/contentAnalysis');
@@ -332,17 +340,26 @@ app.post('/api/crawl/discover', upload.none(), async (req, res) => {
 
         // Callback for real-time DB insertion with DEPTH TRACKING
         const onDiscover = (u, depth = 0, parentUrl = null) => {
+          // CHECK ABORT FLAG - stop inserting if user clicked Stop
+          const crawlStatus = crawler.isAborted ? crawler.isAborted(crawlId) : false;
+          if (crawlStatus) {
+            console.log(`🛑 Skipping insert for ${u} - crawl aborted`);
+            return;
+          }
+
           if (!u || discoveredUrls.has(u)) return;
           discoveredUrls.add(u);
 
           const stmt = db.db.prepare(`INSERT INTO scans (url, score, total_issues, errors, warnings, notices, detailed_json, crawl_id, scan_status, depth, parent_url) VALUES (?, 0, 0, 0, 0, 0, '[]', ?, 'pending', ?, ?)`);
           stmt.run(u, crawlId, depth, parentUrl, (err) => {
-            if (err) console.error('Error inserting live scan:', err.message);
+            stmt.finalize();
           });
-          stmt.finalize();
         };
 
-        const urls = await crawler.crawl(url, limit, onDiscover);
+        // Register this crawl for abort tracking
+        crawler.startCrawlTracking(crawlId);
+
+        const urls = await crawler.crawl(url, limit, onDiscover, crawlId);
 
         console.log(`[API] Discovery finished. Unique pages found: ${discoveredUrls.size}`);
         db.db.run("UPDATE crawls SET total_pages = ?, status = 'discovered' WHERE id = ?", [discoveredUrls.size, crawlId]);
@@ -374,7 +391,7 @@ app.post('/api/crawl/stop/:id', (req, res) => {
 
 // Get the latest crawl ID (for Site Map refresh after page reload)
 app.get('/api/crawl/latest', (req, res) => {
-  db.db.get("SELECT id FROM crawls ORDER BY timestamp DESC LIMIT 1", (err, row) => {
+  db.db.get("SELECT id FROM crawls ORDER BY timestamp DESC LIMIT 1", [], (err, row) => {
     if (err || !row) return res.json({ crawlId: null });
     res.json({ crawlId: row.id });
   });
@@ -630,55 +647,66 @@ app.post('/api/download-html', (req, res) => {
 app.get('/api/report/crawl/:id/csv', (req, res) => {
   const crawlId = req.params.id;
 
-  db.db.all("SELECT url, scan_status, errors, warnings, total_issues, detailed_json FROM scans WHERE crawl_id = ? ORDER BY errors DESC", [crawlId], (err, scans) => {
-    if (err) {
-      console.error('CSV Export error:', err);
-      return res.status(500).json({ error: 'Failed to export' });
+  // First get the crawl to get domain name for filename
+  db.db.get("SELECT domain FROM crawls WHERE id = ?", [crawlId], (err, crawl) => {
+    if (err || !crawl) {
+      return res.status(404).json({ error: 'Crawl not found' });
     }
 
-    if (!scans || scans.length === 0) {
-      return res.status(404).json({ error: 'No scans found for this crawl' });
-    }
+    const domain = crawl.domain || 'unknown';
+    const date = new Date().toISOString().split('T')[0];
 
-    // Build CSV
-    const BOM = '\uFEFF'; // UTF-8 BOM for Excel compatibility
-    let csv = BOM + 'URL,Status,Errors,Warnings,Total Issues,Top Issue\n';
+    db.db.all("SELECT url, scan_status, errors, warnings, total_issues, detailed_json FROM scans WHERE crawl_id = ? ORDER BY errors DESC", [crawlId], (err, scans) => {
+      if (err) {
+        console.error('CSV Export error:', err);
+        return res.status(500).json({ error: 'Failed to export' });
+      }
 
-    scans.forEach(scan => {
-      // Get top issue from detailed_json if available
-      let topIssue = '';
-      try {
-        const issues = JSON.parse(scan.detailed_json || '[]');
-        if (issues.length > 0) {
-          // Group and find most common
-          const counts = {};
-          issues.forEach(i => {
-            const code = i.code || 'unknown';
-            counts[code] = (counts[code] || 0) + 1;
-          });
-          const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-          if (sorted.length > 0) {
-            topIssue = sorted[0][0].replace(/,/g, ';'); // Escape commas
+      if (!scans || scans.length === 0) {
+        return res.status(404).json({ error: 'No scans found for this crawl' });
+      }
+
+      // Build CSV
+      const BOM = '\uFEFF'; // UTF-8 BOM for Excel compatibility
+      let csv = BOM + 'URL,Status,Errors,Warnings,Total Issues,Top Issue\n';
+
+      scans.forEach(scan => {
+        // Get top issue from detailed_json if available
+        let topIssue = '';
+        try {
+          const issues = JSON.parse(scan.detailed_json || '[]');
+          if (issues.length > 0) {
+            // Group and find most common
+            const counts = {};
+            issues.forEach(i => {
+              const code = i.code || 'unknown';
+              counts[code] = (counts[code] || 0) + 1;
+            });
+            const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+            if (sorted.length > 0) {
+              topIssue = sorted[0][0].replace(/,/g, ';'); // Escape commas
+            }
           }
-        }
-      } catch (e) { }
+        } catch (e) { }
 
-      // Escape URL for CSV
-      const url = scan.url.replace(/"/g, '""');
-      const status = scan.scan_status || 'pending';
-      const errors = scan.errors || 0;
-      const warnings = scan.warnings || 0;
-      const total = scan.total_issues || 0;
+        // Escape URL for CSV
+        const url = scan.url.replace(/"/g, '""');
+        const status = scan.scan_status || 'pending';
+        const errors = scan.errors || 0;
+        const warnings = scan.warnings || 0;
+        const total = scan.total_issues || 0;
 
-      csv += `"${url}",${status},${errors},${warnings},${total},"${topIssue}"\n`;
+        csv += `"${url}",${status},${errors},${warnings},${total},"${topIssue}"\n`;
+      });
+
+      // Send as download with proper domain-based filename
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="compliance-report-${domain}-${date}.csv"`);
+      res.send(csv);
     });
-
-    // Send as download
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="compliance-report-${crawlId}.csv"`);
-    res.send(csv);
   });
 });
+
 
 // Graceful Shutdown
 function gracefulShutdown(signal) {

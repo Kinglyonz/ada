@@ -1,5 +1,12 @@
 const pa11y = require('pa11y');
-const db = require('./db');
+
+// Dynamic DB selection - match server.js logic
+let db;
+if (process.env.SUPABASE_URL) {
+    db = require('./db-supabase');
+} else {
+    db = require('./db');
+}
 
 const CONCURRENCY = 2;
 const queue = [];

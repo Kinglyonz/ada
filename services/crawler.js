@@ -64,7 +64,7 @@ const fetchUrl = (url, headers) => {
 };
 
 // FAST CRAWL with Depth Tracking (Static)
-async function fastCrawl(startUrl, maxPages, onDiscover) {
+async function fastCrawl(startUrl, maxPages, onDiscover, crawlId = null) {
     console.log(`🚀 Starting FAST static crawl with DEPTH TRACKING for ${startUrl}`);
     const visited = new Set();
     const depthMap = new Map(); // url -> {depth, parentUrl}
@@ -89,6 +89,12 @@ async function fastCrawl(startUrl, maxPages, onDiscover) {
     const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
     while (queue.length > 0 && visited.size < maxPages) {
+        // CHECK ABORT - exit immediately if user clicked Stop
+        if (crawlId && isAborted(crawlId)) {
+            console.log(`🛑 FastCrawl aborted at ${visited.size} pages`);
+            break;
+        }
+
         const batch = [];
         while (queue.length > 0 && batch.length < MAX_CONCURRENT && visited.size + batch.length < maxPages) {
             const item = queue.shift();
@@ -140,14 +146,14 @@ async function fastCrawl(startUrl, maxPages, onDiscover) {
 }
 
 // MAIN CRAWL FUNCTION with Depth Tracking
-async function crawl(rawUrl, maxPages = Infinity, onDiscover = null) {
+async function crawl(rawUrl, maxPages = Infinity, onDiscover = null, crawlId = null) {
     const startUrl = ensureProtocol(rawUrl);
     let allResults = [];
     let staticResults = [];
 
     try {
         console.log(`🕵️ Attempting Fast Static Discovery with DEPTH TRACKING for ${startUrl}...`);
-        staticResults = await fastCrawl(startUrl, maxPages, onDiscover);
+        staticResults = await fastCrawl(startUrl, maxPages, onDiscover, crawlId);
         allResults = staticResults;
         console.log(`⚡ Fast Discovery found ${staticResults.length} pages. Max depth: ${Math.max(...staticResults.map(r => r.depth || 0))}`);
     } catch (e) {
