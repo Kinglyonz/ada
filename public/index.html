@@ -1064,6 +1064,7 @@
       }
     }
   </style>
+  <script src="client-config.js"></script>
 </head>
 
 <body data-theme="dark">
@@ -1071,8 +1072,8 @@
     <div class="header-row">
       <div class="header-content">
         <div class="header">
-          <h1>ADA Compliance Scanner</h1>
-          <p>Professional Compliance Intelligence</p>
+          <h1 id="appTitle">ADA Compliance Scanner</h1>
+          <p id="appTagline">Professional Compliance Intelligence</p>
         </div>
       </div>
       <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Light/Dark Mode">
@@ -3660,6 +3661,25 @@
       printWindow.print();
     }
 
+  </script>
+  <script>
+    // Initialize Client Configuration
+    (function initClientConfig() {
+      if (!window.CLIENT_CONFIG) return;
+      const config = window.CLIENT_CONFIG;
+
+      // Apply Branding
+      if (document.getElementById('appTitle')) document.getElementById('appTitle').textContent = config.appName;
+      if (document.getElementById('appTagline')) document.getElementById('appTagline').textContent = config.appTagline;
+      document.title = config.appName + " - " + config.companyName;
+
+      // Apply Theme Colors (Simple Override)
+      const root = document.documentElement;
+      if (config.theme && config.theme.dark && config.theme.dark.primary) {
+        // Update primary gradient for dark mode
+        root.style.setProperty('--primary-gradient', `linear-gradient(135deg, ${config.theme.dark.primary} 0%, ${config.theme.dark.primary} 100%)`);
+      }
+    })();
   </script>
 </body>
 
