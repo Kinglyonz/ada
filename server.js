@@ -1,6 +1,9 @@
 require('dotenv').config();
 const express = require('express');
-const pa11y = require('pa11y');
+// [AWS-OPTIMIZATION] DISABLED HEAVY SCANNERS FOR CLOUD DASHBOARD
+// const pa11y = require('pa11y');
+const pa11y = async () => { throw new Error("Scanner disabled in Cloud Mode"); };
+
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
@@ -18,8 +21,21 @@ if (process.env.DATABASE_URL) {
   console.log('📂 Using Local SQLite Database');
   db = require('./services/db');
 }
-const crawler = require('./services/crawler');
-const scanQueue = require('./services/scanQueue');
+// const crawler = require('./services/crawler');
+const crawler = { 
+  crawl: async () => [], 
+  isAborted: () => false, 
+  startCrawlTracking: () => {}, 
+  abortCrawl: () => {},
+  cleanupCrawl: () => {}
+};
+
+// const scanQueue = require('./services/scanQueue');
+const scanQueue = {
+  addJob: () => console.log('Scan Queue Disabled'),
+  clear: () => {}
+};
+
 const contentAnalysis = require('./services/contentAnalysis');
 const { generateExecutiveReport, generateCrawlReport } = require('./services/reportGenerator');
 
